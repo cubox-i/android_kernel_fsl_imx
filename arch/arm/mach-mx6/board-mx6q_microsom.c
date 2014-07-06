@@ -289,7 +289,7 @@ struct imx_vout_mem {
 };
 
 static struct imx_vout_mem vout_mem __initdata = {
-	.res_msize = SZ_128M,
+	.res_msize = 0,
 };
 
 /* Needs refinment to configure only the internal supply */
@@ -319,7 +319,7 @@ static struct platform_device usom_vmmc_reg_devices = {
 };
 
 struct viv_gpu_platform_data imx6q_gpu_pdata __initdata = {
-	.reserved_mem_size = SZ_128M,
+	.reserved_mem_size = SZ_128M + SZ_64M - SZ_16M,
 };
 
 static struct ipuv3_fb_platform_data usom_fb_data[] = {
@@ -422,7 +422,7 @@ static struct ion_platform_data imx_ion_data = {
 		.type = ION_HEAP_TYPE_CARVEOUT,
 		.name = "vpu_ion",
 		.size = SZ_16M,
-		.cacheable = 1,
+		.cacheable = 0,
 		},
 	},
 };
@@ -516,6 +516,26 @@ static int __init caam_setup(char *__unused)
 	return 1;
 }
 early_param("caam", caam_setup);
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct resource ram_console_resource = {
+	.name = "android ram console",
+	.flags = IORESOURCE_MEM,
+};
+
+static struct platform_device android_ram_console = {
+	.name = "ram_console",
+	.num_resources = 1,
+	.resource = &ram_console_resource,
+};
+
+static int __init imx6x_add_ram_console(void)
+{
+	return platform_device_register(&android_ram_console);
+}
+#else
+#define imx6x_add_ram_console() do {} while (0)
+#endif
 
 static int usom_bt_power_change(int status)
 {
@@ -631,6 +651,7 @@ void __init mx6_usom_board_init(void)
 
 	gp_reg_id = usom_dvfscore_data.reg_id;
 	soc_reg_id = usom_dvfscore_data.soc_id;
+	imx6x_add_ram_console();
 
 	/* Now this is really dangerous !!! */
 	/* TODO - Enable LDO bypass mode */
@@ -657,7 +678,9 @@ void __init mx6_usom_board_init(void)
 			imx6q_add_ipuv3fb(i, &usom_fb_data[i]);
 
 	imx6q_add_vdoa();
+#if 0 /* Breaks the kernel */
 	imx6q_add_ldb(&ldb_data);
+#endif
 	voutdev = imx6q_add_v4l2_output(0);
 	if (vout_mem.res_msize && voutdev) {
 		dma_declare_coherent_memory(&voutdev->dev,
@@ -700,6 +723,9 @@ void __init mx6_usom_board_init(void)
 	imx6q_add_dma();
 
 	imx6q_add_dvfs_core(&usom_dvfscore_data);
+	if (imx_ion_data.heaps[0].size)
+		imx6q_add_ion(0, &imx_ion_data,
+			sizeof(imx_ion_data) + sizeof(struct ion_platform_heap));
 	imx6q_add_hdmi_soc();
 	imx6q_add_hdmi_soc_dai();
 
@@ -758,13 +784,27 @@ struct sys_timer mx6_usom_timer = {
 };
 void __init mx6q_usom_reserve(void)
 {
-#if defined(CONFIG_MXC_GPU_VIV) || defined(CONFIG_MXC_GPU_VIV_MODULE)
 	phys_addr_t phys;
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	phys = memblock_alloc_base(SZ_1M, SZ_4K, SZ_1G);
+	memblock_remove(phys, SZ_1M);
+	memblock_free(phys, SZ_1M);
+	ram_console_resource.start = phys;
+	ram_console_resource.end   = phys + SZ_1M - 1;
+#endif
+#if defined(CONFIG_MXC_GPU_VIV) || defined(CONFIG_MXC_GPU_VIV_MODULE)
 	if (imx6q_gpu_pdata.reserved_mem_size) {
 		phys = memblock_alloc_base(imx6q_gpu_pdata.reserved_mem_size,
-					   SZ_4K, SZ_1G);
+					   SZ_4K, SZ_2G);
 		memblock_remove(phys, imx6q_gpu_pdata.reserved_mem_size);
 		imx6q_gpu_pdata.reserved_mem_base = phys;
+	}
+#endif
+#if defined(CONFIG_ION)
+	if (imx_ion_data.heaps[0].size) {
+		phys = memblock_alloc(imx_ion_data.heaps[0].size, SZ_4K);
+		memblock_remove(phys, imx_ion_data.heaps[0].size);
+		imx_ion_data.heaps[0].base = phys;
 	}
 #endif
 	if (vout_mem.res_msize) {
