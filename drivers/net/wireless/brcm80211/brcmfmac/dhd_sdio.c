@@ -3211,20 +3211,21 @@ static int brcmf_sdbrcm_download_code_file(struct brcmf_sdio *bus)
 	uint len;
 	u8 *memblock = NULL, *memptr;
 	int ret;
-	char brcmf_sdio_fw_name[]="brcm/bcm4329_fw.bin";
+	char brcmf_sdio_fw_name[]="brcm/brcmfmac4329-sdio.bin";
 
 	brcmf_dbg(INFO, "Enter\n");
 
 	switch(bus->ci->chip)
 	{
 		case BCM4330_CHIP_ID:
-			strcpy(brcmf_sdio_fw_name,"brcm/bcm4330_fw.bin");
+			strcpy(brcmf_sdio_fw_name,"brcm/brcmfmac4330-sdio.bin");
 			break;
 		case BCM4329_CHIP_ID:
 		default:
-			strcpy(brcmf_sdio_fw_name,"brcm/bcm4329_fw.bin");
+			strcpy(brcmf_sdio_fw_name,"brcm/brcmfmac4329-sdio.bin");
 			break;
 	}
+	printk ("Rabeeh - requesting firmware %s\n",brcmf_sdio_fw_name);
 	ret = request_firmware(&bus->firmware, brcmf_sdio_fw_name,
 			       &bus->sdiodev->func[2]->dev);
 	if(ret)
@@ -3324,16 +3325,16 @@ static int brcmf_sdbrcm_download_nvram(struct brcmf_sdio *bus)
 	char *memblock = NULL;
 	char *bufp;
 	int ret;
-	char brcmf_sdio_nv_name[] = "brcm/bcm4329_nvram.txt";
+	char brcmf_sdio_nv_name[] = "brcm/brcmfmac4329-sdio.txt";
 
 	switch(bus->ci->chip)
 	{
 		case BCM4330_CHIP_ID:
-			strcpy(brcmf_sdio_nv_name,"brcm/bcm4330_nvram.txt");
+			strcpy(brcmf_sdio_nv_name,"brcm/brcmfmac4330-sdio.txt");
 			break;
 		case BCM4329_CHIP_ID:
 		default:
-			strcpy(brcmf_sdio_nv_name,"brcm/bcm4329_nvram.txt");
+			strcpy(brcmf_sdio_nv_name,"brcm/brcmfmac4329-sdio.txt");
 			break;
 	}
 
