@@ -3225,7 +3225,6 @@ static int brcmf_sdbrcm_download_code_file(struct brcmf_sdio *bus)
 			strcpy(brcmf_sdio_fw_name,"brcm/brcmfmac4329-sdio.bin");
 			break;
 	}
-	printk ("Rabeeh - requesting firmware %s\n",brcmf_sdio_fw_name);
 	ret = request_firmware(&bus->firmware, brcmf_sdio_fw_name,
 			       &bus->sdiodev->func[2]->dev);
 	if(ret)
